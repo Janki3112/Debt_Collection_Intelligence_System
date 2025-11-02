@@ -3,40 +3,25 @@
 ## 1. Architecture Overview
 
 ### System Components
-┌─────────────┐
-│   Client    │
-└──────┬──────┘
-│
-v
-┌─────────────────────────────────────┐
-│          FastAPI Server             │
-│  ┌─────────────────────────────┐   │
-│  │   API Endpoints             │   │
-│  │  - Ingest                   │   │
-│  │  - Extract                  │   │
-│  │  - Ask (Q&A)                │   │
-│  │  - Audit                    │   │
-│  │  - Webhooks                 │   │
-│  └──────────┬──────────────────┘   │
-│             │                       │
-│  ┌──────────v──────────────────┐   │
-│  │   Core Services             │   │
-│  │  - PDF Extractor            │   │
-│  │  - Chunker                  │   │
-│  │  - Embeddings (FAISS)       │   │
-│  │  - Retriever (RAG)          │   │
-│  │  - LLM Client               │   │
-│  │  - Rule Engine              │   │
-│  └──────────┬──────────────────┘   │
-└─────────────┼───────────────────────┘
-│
-┌────────┴────────┐
-│                 │
-┌────v────┐     ┌─────v─────┐
-│ SQLite  │     │   FAISS   │
-│   DB    │     │   Index   │
-└─────────┘     └───────────┘
-
+┌─────────────────────────────────────────────────────────────┐
+│                     FastAPI Server                          │
+│                                                             │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐     │
+│  │ Ingest   │  │ Extract  │  │   Ask    │  │  Audit   │     │
+│  │ Endpoint │  │ Endpoint │  │ Endpoint │  │ Endpoint │     │
+│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘     │
+│       │             │             │             │           │
+│  ┌────┴─────────────┴─────────────┴─────────────┴──────┐    │
+│  │              Service Layer                          │    │
+│  │  • PDF Processor   • Chunker    • Embeddings        │    │
+│  │  • RAG Retriever   • LLM Client • Rule Engine       │    │
+│  └────┬──────────────────────┬──────────────────┬──────┘    │
+└───────┼──────────────────────┼──────────────────┼───────────┘
+        │                      │                  │
+   ┌────┴────┐          ┌──────┴──────┐    ┌─────┴──────┐
+   │ SQLite  │          │    FAISS    │    │  Storage   │
+   │Database │          │Vector Index │    │  (PDFs)    │
+   └─────────┘          └─────────────┘    └────────────┘
 ### Technology Stack
 - **Framework**: FastAPI 0.104+
 - **Database**: SQLite with async support (aiosqlite)
