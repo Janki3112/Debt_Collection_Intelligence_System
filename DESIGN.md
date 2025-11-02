@@ -3,25 +3,8 @@
 ## 1. Architecture Overview
 
 ### System Components
-┌─────────────────────────────────────────────────────────────┐
-│                     FastAPI Server                          │
-│                                                             │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐     │
-│  │ Ingest   │  │ Extract  │  │   Ask    │  │  Audit   │     │
-│  │ Endpoint │  │ Endpoint │  │ Endpoint │  │ Endpoint │     │
-│  └────┬─────┘  └────┬─────┘  └────┬─────┘  └────┬─────┘     │
-│       │             │             │             │           │
-│  ┌────┴─────────────┴─────────────┴─────────────┴──────┐    │
-│  │              Service Layer                          │    │
-│  │  • PDF Processor   • Chunker    • Embeddings        │    │
-│  │  • RAG Retriever   • LLM Client • Rule Engine       │    │
-│  └────┬──────────────────────┬──────────────────┬──────┘    │
-└───────┼──────────────────────┼──────────────────┼───────────┘
-        │                      │                  │
-   ┌────┴────┐          ┌──────┴──────┐    ┌─────┴──────┐
-   │ SQLite  │          │    FAISS    │    │  Storage   │
-   │Database │          │Vector Index │    │  (PDFs)    │
-   └─────────┘          └─────────────┘    └────────────┘
+<img width="532" height="471" alt="{019BBBFD-5F99-4E53-BE49-410735C1EA4A}" src="https://github.com/user-attachments/assets/88776ec5-f802-42ad-8b45-b901aedb6a39" />
+
 ### Technology Stack
 - **Framework**: FastAPI 0.104+
 - **Database**: SQLite with async support (aiosqlite)
