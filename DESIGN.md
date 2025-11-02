@@ -18,35 +18,13 @@
 ## 2. Data Model
 
 ### Database Schema
+<img width="416" height="408" alt="{751C08F6-526F-45C8-B7A5-561BB52CBDE1}" src="https://github.com/user-attachments/assets/76c41ff4-2ff2-4152-b290-174a8dae8db9" />
 
-documents
-├── id (VARCHAR, PK)
-├── filename (VARCHAR)
-└── path (VARCHAR)
-pages
-├── id (INTEGER, PK, AUTOINCREMENT)
-├── document_id (VARCHAR, FK -> documents.id)
-├── page_no (INTEGER)
-└── text (TEXT)
-chunks
-├── id (INTEGER, PK, AUTOINCREMENT)
-├── document_id (VARCHAR, FK -> documents.id)
-├── page_no (INTEGER)
-├── char_start (INTEGER)
-├── char_end (INTEGER)
-└── text (TEXT)
 
 ### FAISS Index Structure
 
-faiss.index (binary file)
-├── Vectors: 384-dimensional embeddings
-└── Index type: IndexFlatIP (cosine similarity)
-faiss_meta.pkl (pickle file)
-├── chunk_id
-├── document_id
-├── page_no
-├── char_start/end
-└── text
+<img width="415" height="256" alt="{E5F40600-161B-4C91-A357-0BBC832158ED}" src="https://github.com/user-attachments/assets/23f30d76-b551-44cc-bd39-e802bf13f429" />
+
 
 ## 3. Processing Pipeline
 
