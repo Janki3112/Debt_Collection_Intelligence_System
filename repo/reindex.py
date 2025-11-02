@@ -17,7 +17,7 @@ from sqlalchemy import select
 async def reindex_all():
     """Re-create FAISS index from database chunks"""
     print("=" * 60)
-    print("🔄 Re-indexing Documents")
+    print("[Reload] Re-indexing Documents")
     print("=" * 60)
     
     async with async_session() as session:

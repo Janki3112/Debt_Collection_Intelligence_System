@@ -3,27 +3,12 @@ Debt Collection Intelligence System - Main Application
 Production-ready FastAPI application with comprehensive error handling,
 logging, metrics, and security features.
 """
+import sys
+import io
 
-# ========================================
-# CRITICAL: Load .env BEFORE any app imports
-# ========================================
-import os
-from dotenv import load_dotenv
+# Force UTF-8 encoding for stdout
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
-# Load .env from project root FIRST (before importing any app modules)
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
-
-# Verify environment loaded correctly
-print("=" * 60)
-print("🔧 ENVIRONMENT CHECK")
-print("=" * 60)
-print(f"GROQ_API_KEY: {'✔ Loaded' if os.getenv('GROQ_API_KEY') else '[ERROR] Missing'}")
-print(f"GROQ_MODEL: {os.getenv('GROQ_MODEL', 'Not set')}")
-print(f"DB_URL: {'✔ Loaded' if os.getenv('DB_URL') else '[ERROR] Missing'}")
-print(f"TAVILY_API_KEY: {'✔ Loaded' if os.getenv('TAVILY_API_KEY') else '[ERROR] Missing'}")
-print("=" * 60)
-
-# NOW import everything else (after .env is loaded)
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,6 +18,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 import time
+import os
 
 from app.api import ingest, extract, ask, audit, admin, webhooks
 from app.db.session import init_db, close_db
@@ -49,6 +35,12 @@ async def lifespan(app: FastAPI):
     # Startup
     logger.info("Starting Debt Collection Intelligence System...")
     logger.info(f"GROQ Model: {os.getenv('GROQ_MODEL', 'Not configured')}")
+    
+    # Verify critical environment variables
+    if not os.getenv('GROQ_API_KEY'):
+        logger.error("GROQ_API_KEY not found in environment!")
+    if not os.getenv('DB_URL'):
+        logger.error("DB_URL not found in environment!")
     
     await init_db()
     logger.info("Database initialized")

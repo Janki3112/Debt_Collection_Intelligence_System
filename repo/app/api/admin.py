@@ -2,7 +2,7 @@
 Admin and monitoring endpoints
 """
 from fastapi import APIRouter, Response
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Dict, Any
 import os
@@ -77,7 +77,53 @@ async def readiness_check():
             status_code=503
         )
 
-@router.get("/metrics", response_class=PlainTextResponse)
+@router.get("/metrics")
+async def metrics_endpoint():
+    """
+    Metrics endpoint - returns JSON format
+    For Prometheus text format, use /metrics/prometheus
+    """
+    try:
+        from app.db.crud import get_db_stats
+        from app.metrics import (
+            INGEST_COUNT, INGEST_PAGES, ASK_COUNT, EXTRACT_COUNT, 
+            AUDIT_COUNT, ACTIVE_REQUESTS, CHUNK_COUNT
+        )
+        
+        # Get database stats
+        try:
+            stats = await get_db_stats()
+        except Exception as e:
+            logger.warning(f"Could not get DB stats: {e}")
+            stats = {"documents": 0, "chunks": 0, "pages": 0}
+        
+        uptime = (datetime.utcnow() - startup_time).total_seconds()
+        
+        return {
+            "documents": stats.get("documents", 0),
+            "chunks": stats.get("chunks", 0),
+            "pages": stats.get("pages", 0),
+            "uptime_seconds": uptime,
+            "ingest_count": INGEST_COUNT._value.get(),
+            "ingest_pages": INGEST_PAGES._value.get(),
+            "ask_count": ASK_COUNT._value.get(),
+            "extract_count": EXTRACT_COUNT._value.get(),
+            "audit_count": AUDIT_COUNT._value.get(),
+            "chunk_count": CHUNK_COUNT._value.get(),
+            "active_requests": ACTIVE_REQUESTS._value.get(),
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Metrics endpoint error: {str(e)}", exc_info=True)
+        # Return basic metrics even if DB is down
+        return {
+            "documents": 0,
+            "chunks": 0,
+            "pages": 0,
+            "error": str(e)
+        }
+
+@router.get("/metrics/prometheus", response_class=PlainTextResponse)
 async def prometheus_metrics():
     """
     Prometheus metrics endpoint

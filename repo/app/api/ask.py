@@ -1,5 +1,6 @@
 """
 Q&A endpoints with streaming support and search enrichment
+FIXED: Proper document_id filtering
 """
 from fastapi import APIRouter, HTTPException, Query, status
 from typing import List, Optional
@@ -25,18 +26,38 @@ async def ask(req: AskRequest):
     
     Process:
     1. Embed question
-    2. Retrieve top-k relevant chunks
+    2. Retrieve top-k relevant chunks (filtered by document_ids if provided)
     3. Generate answer using Groq LLM (if available) or extractive method
     4. Optionally enrich with external search (Tavily)
     5. Return answer with source citations
     """
     try:
-        # Retrieve relevant chunks
+        # FIXED: document_ids is now properly normalized by the validator
+        doc_ids = req.document_ids
+        
+        # Log for debugging
+        if doc_ids:
+            logger.info(f"🔍 Filtering by document IDs: {doc_ids}")
+        else:
+            logger.info("🔍 No document ID filter - searching all documents")
+        
+        # Retrieve relevant chunks with filtering
         chunks = retrieve_top_k(
             req.question,
-            req.document_ids,
+            doc_ids,
             top_k=req.top_k
         )
+        
+        # ADDED: Verify chunks match requested documents
+        if doc_ids and chunks:
+            chunk_doc_ids = {chunk["document_id"] for chunk in chunks}
+            logger.info(f"✔ Retrieved chunks from documents: {chunk_doc_ids}")
+            
+            # Warn if chunks don't match requested documents
+            if not chunk_doc_ids.issubset(set(doc_ids)):
+                logger.warning(f"[Warn] Some chunks are from unexpected documents!")
+                logger.warning(f"   Requested: {doc_ids}")
+                logger.warning(f"   Retrieved: {chunk_doc_ids}")
         
         # If no chunks found and search enrichment is enabled, search the web
         if not chunks and req.use_search_enrichment:
@@ -60,6 +81,7 @@ async def ask(req: AskRequest):
                 logger.warning(f"Web search failed: {e}")
         
         if not chunks:
+            logger.warning(f"[Error] No relevant information found for question: {req.question[:50]}...")
             return AskResponse(
                 answer="No relevant information found in the provided documents.",
                 sources=[],
@@ -68,6 +90,14 @@ async def ask(req: AskRequest):
         
         # Generate answer with Groq
         answer, sources, model_used = answer_with_optional_llm(req.question, chunks)
+        
+        # ADDED: Verify sources match requested documents
+        if doc_ids:
+            source_doc_ids = {s["document_id"] for s in sources}
+            if not source_doc_ids.issubset(set(doc_ids)):
+                logger.warning(f"[Warn] Answer sources include unexpected documents!")
+                logger.warning(f"   Requested: {doc_ids}")
+                logger.warning(f"   In answer: {source_doc_ids}")
         
         # Enrich with external search if enabled and we have an answer
         if req.use_search_enrichment and answer:
@@ -83,7 +113,7 @@ async def ask(req: AskRequest):
         # Update metrics
         ASK_COUNT.inc()
         
-        logger.info(f"Answered question using {model_used}: {req.question[:50]}...")
+        logger.info(f"✔ Answered question using {model_used}: {req.question[:50]}...")
         
         # Format sources
         source_citations = [
@@ -125,6 +155,10 @@ async def ask_stream(
     """
     # Parse document IDs
     doc_ids = document_ids.split(",") if document_ids else None
+    
+    # Log for debugging
+    if doc_ids:
+        logger.info(f"🔍 Streaming answer filtered by document IDs: {doc_ids}")
     
     # Retrieve chunks
     chunks = retrieve_top_k(question, doc_ids, top_k=top_k)

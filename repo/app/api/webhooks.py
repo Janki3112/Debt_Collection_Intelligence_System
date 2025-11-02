@@ -1,105 +1,178 @@
 """
 Webhook management endpoints
 """
-from fastapi import APIRouter, HTTPException, Body
-from pydantic import BaseModel, HttpUrl
-from typing import List, Optional, Dict, Any
-from datetime import datetime
 import uuid
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, Field, HttpUrl
+from typing import Optional, List, Dict, Any
+from datetime import datetime
 
 from app.logger import logger
 
 router = APIRouter()
 
-# In-memory webhook registry (in production, use database)
-webhook_registry: Dict[str, dict] = {}
+# In-memory webhook registry (use database in production)
+_webhook_registry: List[Dict[str, Any]] = []
+_event_log: List[Dict[str, Any]] = []
 
-class WebhookConfig(BaseModel):
-    """Webhook configuration"""
-    url: HttpUrl
-    events: List[str]  # e.g., ["ingest.completed", "extract.completed"]
-    secret: Optional[str] = None
-    enabled: bool = True
 
-class WebhookResponse(BaseModel):
-    """Webhook registration response"""
-    webhook_id: str
-    url: str
-    events: List[str]
-    enabled: bool
-    created_at: str
+class WebhookRegister(BaseModel):
+    """Register a webhook URL"""
+    url: HttpUrl = Field(..., description="Webhook URL to receive events")
+    events: List[str] = Field(
+        default=["*"],
+        description="Event types to subscribe to (e.g., 'ingest.completed', 'extract.completed')"
+    )
+    description: Optional[str] = Field(None, description="Description of this webhook")
 
-@router.post("/register", response_model=WebhookResponse)
-async def register_webhook(config: WebhookConfig):
+
+class WebhookEvent(BaseModel):
+    """Incoming webhook event (for testing)"""
+    event_type: str = Field(..., description="Type of event")
+    document_id: Optional[str] = Field(None, description="Related document ID")
+    status: str = Field(..., description="Event status")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata")
+
+
+def get_webhooks_for_event(event_type: str) -> List[Dict[str, Any]]:
     """
-    Register a new webhook endpoint
+    Get all webhooks registered for a specific event type
     
-    Events available:
+    Args:
+        event_type: Event type to filter by (e.g., 'ingest.completed')
+        
+    Returns:
+        List of webhook configurations that match the event type
+    """
+    matching_webhooks = []
+    
+    for webhook in _webhook_registry:
+        # Skip disabled webhooks
+        if not webhook.get("enabled", True):
+            continue
+        
+        # Check if webhook subscribes to this event
+        events = webhook.get("events", [])
+        
+        # Match if subscribed to all events ("*") or specific event
+        if "*" in events or event_type in events:
+            matching_webhooks.append(webhook)
+    
+    return matching_webhooks
+
+
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+async def register_webhook(webhook: WebhookRegister):
+    """
+    Register a webhook URL to receive events
+    
+    Example events:
     - ingest.completed
-    - ingest.failed
     - extract.completed
-    - ask.completed
     - audit.completed
+    - ask.completed
     """
     webhook_id = str(uuid.uuid4())
     
     webhook_data = {
-        "webhook_id": webhook_id,
-        "url": str(config.url),
-        "events": config.events,
-        "secret": config.secret,
-        "enabled": config.enabled,
-        "created_at": datetime.utcnow().isoformat()
+        "id": webhook_id,
+        "url": str(webhook.url),
+        "events": webhook.events,
+        "description": webhook.description,
+        "created_at": datetime.utcnow().isoformat(),
+        "enabled": True
     }
     
-    webhook_registry[webhook_id] = webhook_data
+    _webhook_registry.append(webhook_data)
     
-    logger.info(f"Webhook registered: {webhook_id} for events {config.events}")
+    logger.info(f"Webhook registered: {webhook_id} -> {webhook.url}")
     
-    return WebhookResponse(**webhook_data)
+    return {
+        "webhook_id": webhook_id,
+        "url": webhook.url,
+        "events": webhook.events,
+        "message": "Webhook registered successfully"
+    }
 
-@router.get("/list", response_model=List[WebhookResponse])
+
+@router.get("/webhooks")
 async def list_webhooks():
     """List all registered webhooks"""
-    return [
-        WebhookResponse(**{k: v for k, v in wh.items() if k != "secret"})
-        for wh in webhook_registry.values()
-    ]
+    return {
+        "webhooks": _webhook_registry,
+        "count": len(_webhook_registry)
+    }
 
-@router.get("/{webhook_id}", response_model=WebhookResponse)
-async def get_webhook(webhook_id: str):
-    """Get webhook details"""
-    if webhook_id not in webhook_registry:
-        raise HTTPException(status_code=404, detail="Webhook not found")
-    
-    webhook = webhook_registry[webhook_id]
-    return WebhookResponse(**{k: v for k, v in webhook.items() if k != "secret"})
 
-@router.delete("/{webhook_id}")
+@router.delete("/webhooks/{webhook_id}")
 async def delete_webhook(webhook_id: str):
     """Delete a webhook"""
-    if webhook_id not in webhook_registry:
-        raise HTTPException(status_code=404, detail="Webhook not found")
+    global _webhook_registry
     
-    del webhook_registry[webhook_id]
+    original_count = len(_webhook_registry)
+    _webhook_registry = [w for w in _webhook_registry if w["id"] != webhook_id]
+    
+    if len(_webhook_registry) == original_count:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Webhook not found"
+        )
+    
     logger.info(f"Webhook deleted: {webhook_id}")
     
     return {"message": "Webhook deleted successfully"}
 
-@router.put("/{webhook_id}/toggle")
-async def toggle_webhook(webhook_id: str, enabled: bool = Body(..., embed=True)):
-    """Enable or disable a webhook"""
-    if webhook_id not in webhook_registry:
-        raise HTTPException(status_code=404, detail="Webhook not found")
-    
-    webhook_registry[webhook_id]["enabled"] = enabled
-    logger.info(f"Webhook {webhook_id} {'enabled' if enabled else 'disabled'}")
-    
-    return {"message": f"Webhook {'enabled' if enabled else 'disabled'}"}
 
-def get_webhooks_for_event(event: str) -> List[dict]:
-    """Get all enabled webhooks subscribed to an event"""
-    return [
-        wh for wh in webhook_registry.values()
-        if wh["enabled"] and event in wh["events"]
-    ]
+@router.post("/events", status_code=status.HTTP_202_ACCEPTED)
+async def receive_webhook_event(event: WebhookEvent):
+    """
+    Receive and log webhook events (for testing)
+    
+    This endpoint simulates receiving events from external services
+    """
+    event_id = str(uuid.uuid4())
+    
+    event_data = {
+        "id": event_id,
+        "type": event.event_type,
+        "document_id": event.document_id,
+        "status": event.status,
+        "metadata": event.metadata,
+        "received_at": datetime.utcnow().isoformat()
+    }
+    
+    _event_log.append(event_data)
+    
+    logger.info(
+        f"Webhook event received: {event.event_type} "
+        f"(doc: {event.document_id}, status: {event.status})"
+    )
+    
+    return {
+        "event_id": event_id,
+        "status": "received",
+        "timestamp": event_data["received_at"],
+        "message": f"Event '{event.event_type}' logged successfully"
+    }
+
+
+@router.get("/events")
+async def list_events(limit: int = 50):
+    """List recent webhook events"""
+    return {
+        "events": _event_log[-limit:],
+        "count": len(_event_log)
+    }
+
+
+@router.get("/events/{event_id}")
+async def get_event(event_id: str):
+    """Get details of a specific event"""
+    for event in _event_log:
+        if event["id"] == event_id:
+            return event
+    
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Event not found"
+    )

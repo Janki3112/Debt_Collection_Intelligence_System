@@ -19,7 +19,7 @@ GROQ_TEMPERATURE = float(os.getenv("GROQ_TEMPERATURE", "0.0"))
 # DEBUG: Verify Groq Configuration
 # ========================================
 logger.info("=" * 60)
-logger.info("🔧 LLM CLIENT INITIALIZATION")
+logger.info("INIT] LLM CLIENT INITIALIZATION")
 logger.info("=" * 60)
 logger.info(f"GROQ_API_KEY: {'✔ Found (' + GROQ_API_KEY[:20] + '...' + GROQ_API_KEY[-4:] + ')' if GROQ_API_KEY else '[ERROR] Missing'}")
 logger.info(f"GROQ_MODEL: {GROQ_MODEL}")

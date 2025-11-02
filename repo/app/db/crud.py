@@ -1,7 +1,7 @@
 """
 Async CRUD operations for database
 """
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Any, Optional
 from datetime import datetime
@@ -186,3 +186,39 @@ async def delete_document(document_id: str) -> bool:
             await session.rollback()
             logger.error(f"Failed to delete document {document_id}: {e}")
             raise
+
+
+async def get_db_stats() -> Dict[str, int]:
+    """
+    Get database statistics
+    
+    Returns:
+        Dictionary with document, page, and chunk counts
+    """
+    async with async_session_factory() as session:
+        try:
+            # Count documents
+            doc_result = await session.execute(select(func.count(Document.id)))
+            doc_count = doc_result.scalar() or 0
+            
+            # Count pages
+            page_result = await session.execute(select(func.count(Page.id)))
+            page_count = page_result.scalar() or 0
+            
+            # Count chunks
+            chunk_result = await session.execute(select(func.count(Chunk.id)))
+            chunk_count = chunk_result.scalar() or 0
+            
+            return {
+                "documents": doc_count,
+                "pages": page_count,
+                "chunks": chunk_count
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to get DB stats: {e}")
+            return {
+                "documents": 0,
+                "pages": 0,
+                "chunks": 0
+            }
