@@ -1,0 +1,21 @@
+You are an expert contract auditor. Analyze the following contract text for risky or unfavorable clauses.
+
+FOCUS AREAS:
+- Auto-renewal with short notice periods
+- Unlimited or uncapped liability
+- Broad indemnification clauses
+- Missing or unclear termination rights
+- Unfavorable payment terms
+- Broad IP assignment clauses
+- Non-compete restrictions
+
+CONTRACT TEXT:
+{contract_text}
+
+For each issue found, provide:
+1. Rule name
+2. Severity (critical/high/medium/low)
+3. Explanation
+4. Specific evidence from the text
+
+Return findings in structured format.

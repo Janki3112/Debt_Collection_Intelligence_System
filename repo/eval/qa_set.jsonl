@@ -1,0 +1,10 @@
+{"question": "Who are the parties to this agreement?", "expected_keywords": ["parties", "between", "agreement"], "category": "parties"}
+{"question": "What is the effective date of this contract?", "expected_keywords": ["effective", "date", "commence"], "category": "dates"}
+{"question": "What are the payment terms?", "expected_keywords": ["payment", "terms", "invoice", "due"], "category": "payment"}
+{"question": "Is there an auto-renewal clause?", "expected_keywords": ["auto", "renew", "automatic", "extend"], "category": "renewal"}
+{"question": "What is the termination notice period?", "expected_keywords": ["termination", "notice", "days", "written"], "category": "termination"}
+{"question": "What is the governing law?", "expected_keywords": ["governing", "law", "jurisdiction", "courts"], "category": "legal"}
+{"question": "Are there any liability caps?", "expected_keywords": ["liability", "cap", "limit", "maximum"], "category": "liability"}
+{"question": "What confidentiality obligations exist?", "expected_keywords": ["confidential", "proprietary", "disclosure"], "category": "confidentiality"}
+{"question": "What are the indemnification provisions?", "expected_keywords": ["indemnify", "indemnification", "hold harmless"], "category": "indemnity"}
+{"question": "How long is the initial term?", "expected_keywords": ["term", "period", "duration", "year"], "category": "term"}
