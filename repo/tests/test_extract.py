@@ -2,24 +2,23 @@
 Tests for extraction endpoint
 """
 import pytest
-from fastapi.testclient import TestClient
-from app.main import app
+import pytest_asyncio
 
-client = TestClient(app)
 
 @pytest.mark.asyncio
-async def test_extract_not_found():
+async def test_extract_not_found(async_client):
     """Test extraction with non-existent document"""
-    response = client.post(
+    response = await async_client.post(
         "/extract",
         json={"document_id": "non-existent-id"}
     )
     assert response.status_code == 404
 
+
 @pytest.mark.asyncio
-async def test_extract_success(sample_document_id):
+async def test_extract_success(async_client, sample_document_id):
     """Test successful extraction"""
-    response = client.post(
+    response = await async_client.post(
         "/extract",
         json={"document_id": sample_document_id}
     )

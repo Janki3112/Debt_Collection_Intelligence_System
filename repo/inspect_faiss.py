@@ -36,7 +36,7 @@ print()
 print("=" * 60)
 
 # Check most recent chunks (last 5)
-print("\n🔍 Last 5 chunks added to index:")
+print("\nLast 5 chunks added to index:")
 print("-" * 60)
 for i, chunk in enumerate(meta[-5:], 1):
     print(f"\nChunk {len(meta) - 5 + i}:")

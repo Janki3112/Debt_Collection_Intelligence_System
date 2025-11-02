@@ -2,10 +2,24 @@
 Pytest fixtures for testing
 """
 import pytest
+import pytest_asyncio
 import os
 from reportlab.pdfgen import canvas
 from io import BytesIO
 import tempfile
+import asyncio
+from httpx import AsyncClient
+from app.main import app
+
+
+# Fix for Windows + Python 3.8 event loop issues
+@pytest.fixture(scope="session")
+def event_loop():
+    """Create an event loop for the test session"""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+
 
 @pytest.fixture
 def sample_pdf_path():
@@ -26,24 +40,27 @@ def sample_pdf_path():
     
     yield path
     
-    # Cleanup
     if os.path.exists(path):
         os.unlink(path)
 
-@pytest.fixture
+
+@pytest_asyncio.fixture
 async def sample_document_id(sample_pdf_path):
     """Ingest a sample document and return its ID"""
-    from fastapi.testclient import TestClient
-    from app.main import app
-    
-    client = TestClient(app)
-    
-    with open(sample_pdf_path, 'rb') as f:
-        response = client.post(
-            "/ingest",
-            files=[("files", ("test.pdf", f, "application/pdf"))]
-        )
-    
-    assert response.status_code == 201
-    data = response.json()
-    return data["document_ids"][0]
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        with open(sample_pdf_path, 'rb') as f:
+            response = await client.post(
+                "/ingest",
+                files=[("files", ("test.pdf", f, "application/pdf"))]
+            )
+        
+        assert response.status_code == 201
+        data = response.json()
+        return data["document_ids"][0]
+
+
+@pytest_asyncio.fixture
+async def async_client():
+    """Provide an async HTTP client for testing"""
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        yield client

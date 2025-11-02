@@ -2,15 +2,13 @@
 Tests for audit endpoint
 """
 import pytest
-from fastapi.testclient import TestClient
-from app.main import app
+import pytest_asyncio
 
-client = TestClient(app)
 
 @pytest.mark.asyncio
-async def test_audit_finds_issues(sample_document_id):
+async def test_audit_finds_issues(async_client, sample_document_id):
     """Test audit finds risky clauses"""
-    response = client.post(
+    response = await async_client.post(
         "/audit",
         json={
             "document_id": sample_document_id,

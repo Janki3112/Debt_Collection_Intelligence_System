@@ -1,6 +1,10 @@
 import asyncio
+import sys
 from app.db.models import Base
 from app.core.database import engine
+
+if sys.platform.startswith("win"):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 async def init_models():
     async with engine.begin() as conn:
@@ -9,8 +13,4 @@ async def init_models():
     print("✔ Database initialized successfully!")
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(init_models())
-    except RuntimeError:
-        # Ignore event loop closed error on Windows
-        pass
+    asyncio.run(init_models())
