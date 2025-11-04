@@ -194,5 +194,5 @@ make logs      # View logs
 ---
 
 **Document Version**: 1.0
-**Last Updated**: 2024
-**Author**: Contract Intelligence Team
+**Last Updated**: 2025
+**Author**: Vaishnavi Deshmukh
