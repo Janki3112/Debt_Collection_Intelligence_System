@@ -8,23 +8,6 @@ Production-ready FastAPI application for intelligent contract analysis, field ex
 - 4GB+ RAM recommended
 - Python 3.11+ (for local development)
 
-## Architecture
-
-FastAPI Server
-├── PDF Processing (PyMuPDF)
-|
-├── Chunking (1500 char, 300 overlap)
-|
-├── Embeddings (sentence-transformers)
-|
-├── Vector Search (FAISS)
-|
-├── LLM Integration (OpenAI, with fallback)
-|
-├── Rule Engine (Deterministic + Optional LLM)
-|
-└── Database (SQLite with async support)
-
 ## Environment Variables
 Create a .env file (use .env.example as template):
 Rename .env.example as .env and add api keys where mentioned.
